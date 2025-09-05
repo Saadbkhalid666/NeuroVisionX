@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { FaceMesh } from "@mediapipe/face_mesh";
 import { Camera } from "@mediapipe/camera_utils";
 import * as faceapi from "face-api.js";
+import { HandLandmarker, FilesetResolver } from "@mediapipe/tasks-vision";
+
 import axios from "axios";
 
 export const Cam = () => {
@@ -18,6 +20,7 @@ export const Cam = () => {
   const smoothedAge = useRef(null); // final stable age
   let camera = null;
 
+  
   // Draw MediaPipe landmarks in purple
   const drawFaceMesh = (ctx, landmarks) => {
     if (!landmarks) return;
