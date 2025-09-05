@@ -5,7 +5,7 @@ import * as faceapi from "face-api.js";
 import axios from "axios";
 import { NavLink } from "react-router-dom";
 
-export const Cam = () => {
+export const FaceDetection = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   const [message, setMessage] = useState("");
@@ -120,6 +120,7 @@ export const Cam = () => {
       }
     });
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     camera = new Camera(videoElement, {
       onFrame: async () => await faceMesh.send({ image: videoElement }),
       width: 640,
