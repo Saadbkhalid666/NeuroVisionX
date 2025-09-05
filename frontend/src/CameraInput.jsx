@@ -22,7 +22,7 @@ export const Cam = () => {
   const drawFaceMesh = (ctx, landmarks) => {
     if (!landmarks) return;
 
-    ctx.strokeStyle = "rgba(81, 44, 99,0.3)"; 
+    ctx.strokeStyle = "rgba(167, 236, 62,0.7)"; 
     ctx.lineWidth = 1.5;
 
     // draw points
