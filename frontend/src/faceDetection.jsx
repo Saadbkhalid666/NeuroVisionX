@@ -322,8 +322,8 @@ export const FaceDetection = () => {
             shadow-[0_0_25px_rgba(34,197,94,0.7)]
             hover:scale-105 transition-transform duration-300 text-center"
         >
-          <span className="relative z-10">✋ Hand Detection</span>
-          <span className="absolute inset-0 bg-gradient-to-r from-purple-400 to-green-600 opacity-0 hover:opacity-30 transition duration-500"></span>
+          <span className="relative z-10"> Hand Detection</span>
+          <span className="absolute inset-0 bg-gradient-to-r from-green-600 to-purple-400 opacity-0 hover:opacity-30 transition duration-500"></span>
         </NavLink>
         <NavLink
           to="/"
@@ -332,7 +332,7 @@ export const FaceDetection = () => {
             shadow-[0_0_25px_rgba(34,197,94,0.7)]
             hover:scale-105 transition-transform duration-300 text-center"
         >
-          <span className="relative z-10">🏠 Home</span>
+          <span className="relative z-10"> Home</span>
           <span className="absolute inset-0 bg-gradient-to-r from-purple-400 to-green-600 opacity-0 hover:opacity-30 transition duration-500"></span>
         </NavLink>
       </div>

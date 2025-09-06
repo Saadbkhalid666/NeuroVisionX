@@ -3,12 +3,18 @@ import App from "./App";
 import { Outlet } from "react-router-dom";
 import { FaceDetection } from "./faceDetection";
 import { HandDetection } from "./handDetection";
-import {createBrowserRouter} from "react-router-dom"
+import { createBrowserRouter } from "react-router-dom";
 import { Footer } from "./footer";
+import { MediaPipeProvider } from "./MediaPipeContext"; // import the provider
+
 export const router = createBrowserRouter([
   {
     path: "/",
-    element: <Layout />, // Layout wraps all pages
+    element: (
+      <MediaPipeProvider> {/* wrap Layout with MediaPipeProvider */}
+        <Layout />
+      </MediaPipeProvider>
+    ),
     children: [
       { index: true, element: <App /> },
       { path: "facedetection", element: <FaceDetection /> },
@@ -17,14 +23,14 @@ export const router = createBrowserRouter([
   },
 ]);
 
-function Layout(){
+function Layout() {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
       {/* Main content */}
-        <Outlet />
+      <Outlet />
 
       {/* Footer */}
       <Footer />
     </div>
   );
-};
+}
