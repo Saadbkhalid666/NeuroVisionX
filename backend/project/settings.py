@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-tyl9285hq!oo=eh$p1d2ih$s@gv&71*wu$r3&%#787ucn3m13v
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["https://neurovisionx.onrender.com"]
+ALLOWED_HOSTS = ["https://neurovisionx.onrender.com","https://neurovisionx.vercel.app"]
 
 
 # Application definition
