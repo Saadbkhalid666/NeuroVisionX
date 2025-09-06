@@ -223,7 +223,7 @@ export const FaceDetection = () => {
         try {
           setMessage("Uploading...");
           const res = await axios.post("/upload_image/", formData, {
-            baseURL: "http://127.0.0.1:8000",
+            baseURL: "https://neurovisionx.onrender.com",
             headers: { "Content-Type": "multipart/form-data" },
           });
           setMessage(res.data.message || "Upload successful!");
