@@ -23,9 +23,9 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-tyl9285hq!oo=eh$p1d2ih$s@gv&71*wu$r3&%#787ucn3m13v'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["neurovisionx.onrender.com"]
 
 
 # Application definition

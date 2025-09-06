@@ -193,6 +193,7 @@ export const FaceDetection = () => {
       }
     });
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     camera = new Camera(videoElement, {
       onFrame: async () => await faceMesh.send({ image: videoElement }),
       width: 640,

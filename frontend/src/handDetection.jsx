@@ -15,6 +15,7 @@ export const HandDetection = () => {
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [error, setError] = useState(null);
 
+  
   useEffect(() => {
     let gestureRecognizer;
     let rafId;
