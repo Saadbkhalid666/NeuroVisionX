@@ -6,6 +6,7 @@ import { HandDetection } from "./handDetection";
 import { createBrowserRouter } from "react-router-dom";
 import { Footer } from "./footer";
 import { MediaPipeProvider } from "./MediaPipeContext"; // import the provider
+import { Welcome } from "./Welcome";
 
 export const router = createBrowserRouter([
   {
@@ -16,7 +17,8 @@ export const router = createBrowserRouter([
       </MediaPipeProvider>
     ),
     children: [
-      { index: true, element: <App /> },
+      {index:true,element:<Welcome   />},
+      { path: "home", element: <App /> },
       { path: "facedetection", element: <FaceDetection /> },
       { path: "handdetection", element: <HandDetection /> },
     ],

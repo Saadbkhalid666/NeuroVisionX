@@ -132,6 +132,8 @@ export const HandDetection = () => {
 
   return (
     <div className="relative min-h-screen bg-black flex flex-col items-center justify-center text-white overflow-hidden pb-46 sm:pb-38 px-14">
+
+<title>NeuroVisionX | Hand Detection</title>
       {/* Background glow */}
       <div className="absolute -top-40 -left-40 w-72 sm:w-96 h-72 sm:h-96 bg-purple-600 rounded-full blur-3xl opacity-40 animate-pulse"></div>
       <div className="absolute bottom-[-120px] right-[-120px] w-72 sm:w-[400px] h-72 sm:h-[400px] bg-green-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>

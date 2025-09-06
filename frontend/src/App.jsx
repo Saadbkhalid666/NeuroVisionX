@@ -1,8 +1,11 @@
 import { NavLink } from "react-router-dom";
+import { Welcome } from "./Welcome";
 
 function App() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
+    <>
+    
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-br from-black via-gray-900 to-black text-white relative overflow-hidden">
       
       {/* Background Glow Effects */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600 rounded-full blur-3xl opacity-30 animate-pulse"></div>
@@ -23,7 +26,7 @@ function App() {
             shadow-[0_0_25px_rgba(168,85,247,0.7)]
             hover:scale-105 transition-transform duration-300"
         >
-          <span className="relative z-10">👁 Face Detection</span>
+          <span className="relative z-10">Face Detection</span>
           <span className="absolute inset-0 bg-gradient-to-r from-green-400 to-purple-600 opacity-0 hover:opacity-30 transition duration-500"></span>
         </NavLink>
 
@@ -35,11 +38,12 @@ function App() {
             shadow-[0_0_25px_rgba(34,197,94,0.7)]
             hover:scale-105 transition-transform duration-300"
         >
-          <span className="relative z-10">✋ Hand Detection</span>
+          <span className="relative z-10"> Hand Detection</span>
           <span className="absolute inset-0 bg-gradient-to-r from-purple-400 to-green-600 opacity-0 hover:opacity-30 transition duration-500"></span>
         </NavLink>
       </div>
     </div>
+            </>
   );
 }
 
