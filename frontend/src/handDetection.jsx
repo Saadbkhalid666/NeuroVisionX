@@ -135,8 +135,8 @@ export const HandDetection = () => {
       {/* Background glow */}
       <div className="absolute -top-40 -left-40 w-72 sm:w-96 h-72 sm:h-96 bg-purple-600 rounded-full blur-3xl opacity-40 animate-pulse"></div>
       <div className="absolute bottom-[-120px] right-[-120px] w-72 sm:w-[400px] h-72 sm:h-[400px] bg-green-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>
-      <h1 className="text-3xl font-bold mb-6">
-        NeuroVisionX – Gesture Recognition
+      <h1 className="text-3xl sm:text-5xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-green-400 to-purple-600 drop-shadow-lg mb-8 sm:mb-12 text-center">
+        NeuroVisionX – Face Detection
       </h1>
 
       <div className="flex gap-6 mb-6 text-cyan-400 text-xl font-bold">
