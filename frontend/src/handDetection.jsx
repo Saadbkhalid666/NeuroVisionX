@@ -1,217 +1,121 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { drawConnectors } from "@mediapipe/drawing_utils";
-import { HAND_CONNECTIONS } from "@mediapipe/hands";
-import { Camera } from "@mediapipe/camera_utils";
-import { FilesetResolver, GestureRecognizer } from "@mediapipe/tasks-vision";
-import { Hands } from "@mediapipe/hands";
+import {
+  GestureRecognizer,
+  FilesetResolver,
+  DrawingUtils,
+  HandLandmarker,
+} from "@mediapipe/tasks-vision";
 
 export const HandDetection = () => {
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
-  const [gestures, setGestures] = useState(["🤚 Loading...", "🤚 Loading..."]);
+
+  const [gestures, setGestures] = useState([" Loading...", " Loading..."]);
   const [confidences, setConfidences] = useState([0, 0]);
   const [isModelLoaded, setIsModelLoaded] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const video = videoRef.current;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    let gestureRecognizer;
+    let rafId;
 
-    let camera = null;
-    let hands = null;
-    let gestureRecognizer = null;
-    let rafId = null;
-
-    // Initialize MediaPipe Hands
-    const initHands = async () => {
-      try {
-        hands = new Hands({
-          locateFile: (file) =>
-            `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
-        });
-        
-        hands.setOptions({
-          maxNumHands: 2,
-          modelComplexity: 1,
-          minDetectionConfidence: 0.5,
-          minTrackingConfidence: 0.5,
-        });
-
-        hands.onResults((results) => {
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-
-          if (results.multiHandLandmarks) {
-            results.multiHandLandmarks.forEach((landmarks) => {
-              const gradient = ctx.createLinearGradient(
-                0,
-                0,
-                canvas.width,
-                canvas.height
-              );
-              gradient.addColorStop(0, "#A020F0");
-              gradient.addColorStop(1, "#00FFFF");
-
-              drawConnectors(ctx, landmarks, HAND_CONNECTIONS, {
-                color: gradient,
-                lineWidth: 5,
-              });
-
-              landmarks.forEach((lm) => {
-                const x = lm.x * canvas.width;
-                const y = lm.y * canvas.height;
-                const dotGradient = ctx.createRadialGradient(x, y, 0, x, y, 16);
-                dotGradient.addColorStop(0, "#00FFFF");
-                dotGradient.addColorStop(1, "#A020F0");
-
-                ctx.beginPath();
-                ctx.arc(x, y, 6.5, 0, 2 * Math.PI);
-                ctx.fillStyle = dotGradient;
-                ctx.fill();
-              });
-            });
-          }
-        });
-
-        await hands.initialize();
-        return true;
-      } catch (err) {
-        console.error("Failed to initialize hands:", err);
-        setError("Failed to initialize hand detection");
-        return false;
-      }
-    };
-
-    // Load Gesture Recognizer
     const initGestureRecognizer = async () => {
       try {
-        setGestures(["⚡ Loading model...", "⚡ Loading model..."]);
-        
-        // Use a different approach to load the vision tasks
-        const vision = await FilesetResolver.forVisionTasks(
-          "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision/wasm"
-        );
+        const vision = await FilesetResolver.forVisionTasks("/wasm");
 
         gestureRecognizer = await GestureRecognizer.createFromOptions(vision, {
           baseOptions: {
-            modelAssetPath: "/models/gesture_recognizer.task",
+            modelAssetPath: "/models/gesture_recognizer.task", 
             delegate: "GPU",
           },
           runningMode: "VIDEO",
           numHands: 2,
         });
 
-        return true;
-      } catch (error) {
-        console.error("Failed to initialize gesture recognizer:", error);
-        setError("Failed to load gesture model");
-        return false;
+        setIsModelLoaded(true);
+        startCamera();
+      } catch (err) {
+        console.error("GestureRecognizer init failed:", err);
+        setError(" Failed to load gesture model");
       }
     };
 
-    // Start camera after models are loaded
     const startCamera = () => {
-      if (video) {
-        camera = new Camera(video, {
-          onFrame: async () => {
-            if (hands) await hands.send({ image: video });
-          },
-          width: 640,
-          height: 480,
-        });
-        camera.start();
-        return true;
-      }
-      return false;
-    };
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const ctx = canvas.getContext("2d");
+      const drawingUtils = new DrawingUtils(ctx);
 
-    // Start gesture detection
-    const startGestureDetection = () => {
-      const detectGestures = async () => {
-        if (video.readyState >= 2 && gestureRecognizer) {
-          try {
+      navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+        video.srcObject = stream;
+        video.play();
+
+        const detect = async () => {
+          if (video.readyState >= 2 && gestureRecognizer) {
             const results = await gestureRecognizer.recognizeForVideo(
               video,
               performance.now()
             );
 
-            if (results.gestures && results.gestures.length > 0) {
-              // Collect gestures for each hand
-              const detectedGestures = results.gestures.map(
-                (handGestures) => `✋ ${handGestures[0].categoryName}`
-              );
-              const detectedConfidences = results.gestures.map(
-                (handGestures) => handGestures[0].score
-              );
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-              // Ensure both hands are always represented (fill missing)
-              setGestures([
-                detectedGestures[0] || "🤚 No Gesture",
-                detectedGestures[1] || "🤚 No Gesture",
-              ]);
-              setConfidences([
-                detectedConfidences[0] || 0,
-                detectedConfidences[1] || 0,
-              ]);
+            if (results.landmarks) {
+              results.landmarks.forEach((lm) => {
+                drawingUtils.drawConnectors(
+                  lm,
+                  GestureRecognizer.HAND_CONNECTIONS,
+                  { color: "#00FFFF", lineWidth: 3 }
+                );
+                drawingUtils.drawLandmarks(lm, { color: "#A020F0", radius: 5 });
+              });
+            }
+
+            if (results.gestures && results.gestures.length > 0) {
+              // Default values
+              let leftGesture = " No Gesture";
+              let rightGesture = " No Gesture";
+              let leftConfidence = 0;
+              let rightConfidence = 0;
+
+              results.gestures.forEach((handGestures, i) => {
+                const gesture = handGestures[0].categoryName;
+                const confidence = handGestures[0].score;
+                const handedness = results.handednesses[i][0].categoryName; // "Left" or "Right"
+
+                if (handedness === "Left") {
+                  leftGesture = ` ${gesture}`;
+                  leftConfidence = confidence;
+                } else if (handedness === "Right") {
+                  rightGesture = ` ${gesture}`;
+                  rightConfidence = confidence;
+                }
+              });
+
+              setGestures([leftGesture, rightGesture]);
+              setConfidences([leftConfidence, rightConfidence]);
             } else {
-              setGestures(["🤚 No Hand", "🤚 No Hand"]);
+              setGestures([" No Hand", "No Hand"]);
               setConfidences([0, 0]);
             }
-          } catch (error) {
-            console.error("Gesture recognition error:", error);
           }
-        }
-        rafId = requestAnimationFrame(detectGestures);
-      };
+          rafId = requestAnimationFrame(detect);
+        };
 
-      detectGestures();
+        detect();
+      });
     };
 
-    // Initialize everything in sequence with delays to avoid conflicts
-    const initializeAll = async () => {
-      try {
-        // First initialize hands
-        const handsInitialized = await initHands();
-        if (!handsInitialized) return;
-        
-        // Add a small delay before initializing gesture recognizer
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Then initialize gesture recognizer
-        const gestureInitialized = await initGestureRecognizer();
-        if (!gestureInitialized) return;
-        
-        // Start camera
-        const cameraStarted = startCamera();
-        if (!cameraStarted) return;
-        
-        // Add another small delay before starting gesture detection
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Start gesture detection
-        startGestureDetection();
-        
-        setIsModelLoaded(true);
-        setError(null);
-      } catch (error) {
-        console.error("Initialization error:", error);
-        setError("Failed to initialize. Please refresh the page.");
-      }
-    };
-
-    initializeAll();
+    initGestureRecognizer();
 
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
-      if (camera) camera.stop();
-      if (hands) hands.close();
       if (gestureRecognizer) gestureRecognizer.close();
     };
   }, []);
 
-  // --- Confidence Bar
+  // Confidence bar
   const ConfidenceBar = ({ confidence }) => {
     const width = `${confidence * 100}%`;
     let color = "bg-red-500";
@@ -235,17 +139,18 @@ export const HandDetection = () => {
   };
 
   return (
-    <div className="relative min-h-screen bg-black flex flex-col items-center justify-center text-white overflow-hidden p-4">
+    <div className="relative min-h-screen bg-black flex flex-col items-center justify-center text-white overflow-hidden mb-36">
+      <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600 rounded-full blur-3xl opacity-40 animate-pulse"></div>
+    
       <h1 className="text-4xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-green-400 to-purple-600 drop-shadow-lg mb-6 text-center">
-        NeuroVisionX – Hand Detection
+        NeuroVisionX – Gesture Recognition
       </h1>
 
-      {/* Error message */}
       {error && (
         <div className="text-red-400 text-lg mb-4 p-3 bg-red-900/30 rounded-lg">
           {error}
-          <button 
-            onClick={() => window.location.reload()} 
+          <button
+            onClick={() => window.location.reload()}
             className="ml-4 px-3 py-1 bg-red-600 rounded-md hover:bg-red-700 transition-colors"
           >
             Reload
@@ -253,26 +158,25 @@ export const HandDetection = () => {
         </div>
       )}
 
-      {/* Status indicator */}
       {!isModelLoaded && !error && (
-        <div className="text-yellow-400 text-lg mb-4 animate-pulse">
-          Loading models, please wait...
+        <div className="flex flex-col items-center justify-center min-h-screen bg-black text-purple-300 px-4">
+        <div className="text-2xl font-semibold mb-6">Loading NeuroVisionX AI...</div>
+        <div className="w-full max-w-sm h-3 bg-purple-900 rounded-full overflow-hidden">
+          <div className="h-full bg-purple-500 animate-pulse"></div>
         </div>
+      </div>
       )}
 
-      {/* Both hands */}
       <div className="flex flex-col sm:flex-row gap-6 mb-6 text-2xl font-bold text-cyan-400 drop-shadow-lg text-center">
         <div> Left Hand: {gestures[0]}</div>
         <div> Right Hand: {gestures[1]}</div>
       </div>
 
-      {/* Confidence Bars */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 w-full max-w-2xl mb-6">
         <ConfidenceBar confidence={confidences[0]} />
         <ConfidenceBar confidence={confidences[1]} />
       </div>
 
-      {/* Video */}
       <div className="relative w-full max-w-lg rounded-2xl bg-black/40 backdrop-blur-lg shadow-lg border border-purple-600 overflow-hidden">
         <video
           ref={videoRef}
@@ -289,7 +193,6 @@ export const HandDetection = () => {
         />
       </div>
 
-      {/* Buttons */}
       <div className="flex flex-col sm:flex-row gap-8 mt-8">
         <NavLink
           to="/facedetection"
@@ -298,8 +201,7 @@ export const HandDetection = () => {
             shadow-[0_0_25px_rgba(168,85,247,0.7)]
             hover:scale-105 transition-transform duration-300"
         >
-          <span className="relative z-10">👁 Face Detection</span>
-          <span className="absolute inset-0 bg-gradient-to-r from-green-400 to-purple-600 opacity-0 hover:opacity-30 transition duration-500"></span>
+          👁 Face Detection
         </NavLink>
 
         <NavLink
@@ -309,8 +211,7 @@ export const HandDetection = () => {
             shadow-[0_0_25px_rgba(34,197,94,0.7)]
             hover:scale-105 transition-transform duration-300"
         >
-          <span className="relative z-10">Home</span>
-          <span className="absolute inset-0 bg-gradient-to-r from-purple-400 to-green-600 opacity-0 hover:opacity-30 transition duration-500"></span>
+          🏠 Home
         </NavLink>
       </div>
     </div>
