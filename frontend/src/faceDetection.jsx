@@ -213,28 +213,7 @@ export const FaceDetection = () => {
     const ctx = canvas.getContext("2d");
     ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
 
-    canvas.toBlob(
-      async (blob) => {
-        const file = new File([blob], `face_capture_${Date.now()}.jpg`, {
-          type: "image/jpeg",
-        });
-        const formData = new FormData();
-        formData.append("file", file);
-        try {
-          setMessage("Uploading...");
-          const res = await axios.post("/upload_image/", formData, {
-            baseURL: "https://neurovisionx.onrender.com",
-            headers: { "Content-Type": "multipart/form-data" },
-          });
-          setMessage(res.data.message || "Upload successful!");
-        } catch (err) {
-          console.error("Upload error:", err);
-          setMessage("Upload failed: " + (err.response?.data || err.message));
-        }
-      },
-      "image/jpeg",
-      0.8
-    );
+     
   };
 
   if (loading) {
@@ -277,23 +256,6 @@ export const FaceDetection = () => {
 
       {/* Buttons + Info */}
       <div className="mt-6 sm:mt-8 flex flex-col items-center space-y-4 sm:space-y-6 w-full max-w-lg">
-        <button
-          onClick={captureAndUpload}
-          disabled={!modelsLoaded}
-          className="w-full px-4 sm:px-6 py-3 bg-gradient-to-r from-green-500 to-purple-500 text-black font-bold rounded-xl shadow-lg hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
-        >
-          ⚡ Capture & Upload
-        </button>
-
-        {message && (
-          <p
-            className={`text-center text-sm sm:text-base font-medium ${
-              message.includes("failed") ? "text-red-400" : "text-green-400"
-            }`}
-          >
-            {message}
-          </p>
-        )}
 
         <div className="w-full bg-black/50 backdrop-blur-lg border border-purple-700 rounded-xl p-4 sm:p-6 text-purple-300 shadow-inner text-sm sm:text-base">
           <p>

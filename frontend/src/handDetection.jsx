@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { NavLink } from "react-router-dom";
-import { DrawingUtils } from "@mediapipe/tasks-vision";
+import { DrawingUtils, GestureRecognizer } from "@mediapipe/tasks-vision";
 import { useMediaPipe } from "./MediaPipeContext";
 
 export const HandDetection = () => {
@@ -52,16 +52,14 @@ export const HandDetection = () => {
           );
 
           if (results.landmarks) {
-            results.landmarks.forEach((lm) =>
+            results.landmarks.forEach((lm) => {
               drawingUtils.drawConnectors(
                 lm,
-                gestureRecognizer.HAND_CONNECTIONS,
+                GestureRecognizer.HAND_CONNECTIONS,
                 { color: "#00FFFF", lineWidth: 3 }
-              )
-            );
-            results.landmarks.forEach((lm) =>
-              drawingUtils.drawLandmarks(lm, { color: "#A020F0", radius: 5 })
-            );
+              );
+              drawingUtils.drawLandmarks(lm, { color: "#A020F0", radius: 5 });
+            });
           }
 
           if (results.gestures && results.gestures.length > 0) {
@@ -168,7 +166,7 @@ export const HandDetection = () => {
       </div>
 
       <div className="flex flex-col md:flex-row gap-6 mt-8">
-         <NavLink
+        <NavLink
           to="/facedetection"
           className="px-10 py-3 text-lg font-semibold rounded-2xl relative overflow-hidden
             bg-gradient-to-r from-purple-700 to-purple-500
