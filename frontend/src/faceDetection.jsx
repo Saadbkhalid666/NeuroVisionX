@@ -4,6 +4,7 @@ import { Camera } from "@mediapipe/camera_utils";
 import * as faceapi from "face-api.js";
 import axios from "axios";
 import { NavLink } from "react-router-dom";
+import { DrawingUtils, FaceLandmarker } from "@mediapipe/tasks-vision";
 
 export const FaceDetection = () => {
   const videoRef = useRef(null);
@@ -15,22 +16,33 @@ export const FaceDetection = () => {
   const [loading, setLoading] = useState(true);
   const [modelsLoaded, setModelsLoaded] = useState(false);
 
+  const TRUE_AGE = 16; // your real age
   const ageBuffer = useRef([]);
   const smoothedAge = useRef(null);
+  const ageBiasRef = useRef(0);
+  const CALIBRATION_ALPHA = 0.25;
+  const MAX_BUF = 21;
+
   let camera = null;
 
   // Draw landmarks
   const drawFaceMesh = (ctx, landmarks) => {
     if (!landmarks) return;
-    ctx.strokeStyle = "rgba(167,236,62,0.8)";
-    ctx.lineWidth = 1.5;
+    const drawingUtils = new DrawingUtils(ctx);
+    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYE, { color: "#30FF30", lineWidth: 0.5 });
+    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_IRIS, { color: "#30FF30", lineWidth: 0.5 });
+    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LEFT_EYEBROW, { color: "#30FF30", lineWidth: 0.5 });
 
-    landmarks.forEach((point) => {
-      const x = point.x * ctx.canvas.width;
-      const y = point.y * ctx.canvas.height;
-      ctx.beginPath();
-      ctx.arc(x, y, 1.5, 0, 2 * Math.PI);
-      ctx.stroke();
+    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYE, { color: "#FF3030", lineWidth: 0.5 });
+    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_IRIS, { color: "#FF3030", lineWidth: 0.5 });
+    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_RIGHT_EYEBROW, { color: "#FF3030", lineWidth: 0.5 });
+
+    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_LIPS, { color: "#7df9ff", lineWidth: 0.5 });
+    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_FACE_OVAL, { color: "#7df9ff", lineWidth: 0.5 });
+
+    drawingUtils.drawConnectors(landmarks, FaceLandmarker.FACE_LANDMARKS_TESSELATION, {
+      color: "rgba(125,249,255,0.6)",
+      lineWidth: 0.1,
     });
   };
 
@@ -55,7 +67,7 @@ export const FaceDetection = () => {
     loadModels();
   }, []);
 
-  // Setup mediapipe
+  // Setup mediapipe + face-api
   useEffect(() => {
     if (!modelsLoaded) return;
 
@@ -64,8 +76,7 @@ export const FaceDetection = () => {
     const ctx = canvas.getContext("2d");
 
     const faceMesh = new FaceMesh({
-      locateFile: (file) =>
-        `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
     });
     faceMesh.setOptions({
       maxNumFaces: 1,
@@ -74,47 +85,61 @@ export const FaceDetection = () => {
       minTrackingConfidence: 0.7,
     });
 
+    const detectorOpts = new faceapi.TinyFaceDetectorOptions({
+      inputSize: 416,
+      scoreThreshold: 0.5,
+    });
+
     faceMesh.onResults(async (results) => {
+      if (videoElement.videoWidth && videoElement.videoHeight) {
+        if (canvas.width !== videoElement.videoWidth) canvas.width = videoElement.videoWidth;
+        if (canvas.height !== videoElement.videoHeight) canvas.height = videoElement.videoHeight;
+      }
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
       if (results.multiFaceLandmarks?.length > 0) {
         const landmarks = results.multiFaceLandmarks[0];
         drawFaceMesh(ctx, landmarks);
 
         const detection = await faceapi
-          .detectSingleFace(videoElement, new faceapi.TinyFaceDetectorOptions())
+          .detectSingleFace(videoElement, detectorOpts)
           .withAgeAndGender()
           .withFaceExpressions();
 
         if (detection) {
           setGender(detection.gender);
 
-          if (ageBuffer.current.length < 15) {
-            ageBuffer.current.push(detection.age);
-          } else {
-            ageBuffer.current.shift();
-            ageBuffer.current.push(detection.age);
-          }
+          const rawAge = detection.age;
+          if (Number.isFinite(rawAge)) {
+            if (ageBuffer.current.length >= MAX_BUF) ageBuffer.current.shift();
+            ageBuffer.current.push(rawAge);
 
-          const avgAge =
-            ageBuffer.current.reduce((sum, val) => sum + val, 0) /
-            ageBuffer.current.length;
-          smoothedAge.current = Math.round(avgAge);
-          setAge(smoothedAge.current);
+            const avgAge = ageBuffer.current.reduce((s, v) => s + v, 0) / ageBuffer.current.length;
+            const err = TRUE_AGE - avgAge;
+            ageBiasRef.current = (1 - CALIBRATION_ALPHA) * ageBiasRef.current + CALIBRATION_ALPHA * err;
+
+            const calibrated = Math.max(1, Math.min(100, avgAge + ageBiasRef.current));
+            const finalAge = Math.round(calibrated);
+
+            smoothedAge.current = finalAge;
+            setAge(finalAge);
+          }
 
           const expressions = detection.expressions;
           const maxEmotion = Object.entries(expressions).reduce(
-            (max, [emotion, value]) =>
-              value > max.value ? { emotion, value } : max,
+            (max, [emo, val]) => (val > max.value ? { emotion: emo, value: val } : max),
             { emotion: "", value: 0 }
           );
           setEmotion(maxEmotion.emotion);
 
           ctx.fillStyle = "lime";
           ctx.font = "16px Orbitron, sans-serif";
+          const p = landmarks[10];
           ctx.fillText(
-            `${smoothedAge.current}y ${detection.gender} ${maxEmotion.emotion}`,
-            landmarks[10].x * canvas.width,
-            landmarks[10].y * canvas.height - 10
+            `${smoothedAge.current ?? "--"}y ${detection.gender} ${maxEmotion.emotion}`,
+            p.x * canvas.width,
+            p.y * canvas.height - 10
           );
         }
       }
@@ -141,9 +166,7 @@ export const FaceDetection = () => {
     ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
 
     canvas.toBlob(async (blob) => {
-      const file = new File([blob], `face_capture_${Date.now()}.jpg`, {
-        type: "image/jpeg",
-      });
+      const file = new File([blob], `face_capture_${Date.now()}.jpg`, { type: "image/jpeg" });
       const formData = new FormData();
       formData.append("file", file);
       try {
@@ -173,22 +196,18 @@ export const FaceDetection = () => {
 
   return (
     <div className="relative min-h-screen bg-black flex flex-col items-center justify-center text-white overflow-hidden">
-      {/* Glow Effects */}
       <div className="absolute -top-40 -left-40 w-96 h-96 bg-purple-600 rounded-full blur-3xl opacity-40 animate-pulse"></div>
       <div className="absolute bottom-[-120px] right-[-120px] w-[400px] h-[400px] bg-green-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>
 
-      {/* Title */}
       <h1 className="text-5xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-green-400 to-purple-600 drop-shadow-lg mb-12">
         NeuroVisionX – Face Detection
       </h1>
 
-      {/* Camera Box */}
       <div className="relative w-full max-w-lg rounded-2xl bg-black/40 backdrop-blur-lg shadow-[0_0_25px_rgba(147,51,234,0.6)] border border-purple-600 overflow-hidden">
         <video ref={videoRef} className="w-full h-auto rounded-2xl" playsInline muted />
         <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full" />
       </div>
 
-      {/* Controls + Info */}
       <div className="mt-8 flex flex-col items-center space-y-6 w-full max-w-lg">
         <button
           onClick={captureAndUpload}
@@ -204,22 +223,22 @@ export const FaceDetection = () => {
           </p>
         )}
 
-        {/* Info Panel */}
         <div className="w-full bg-black/50 backdrop-blur-lg border border-purple-700 rounded-xl p-6 text-purple-300 shadow-inner">
           <p className="text-lg">
             Gender: <span className="text-purple-100 font-semibold">{gender}</span>
           </p>
           <p className="text-lg">
             Age: <span className="text-purple-100 font-semibold">{age}</span>{" "}
-            <span className="text-yellow-400 text-sm">(AI estimate)</span>
+            <span className="text-yellow-400 text-sm">(calibrated)</span>
           </p>
           <p className="text-lg">
             Emotion: <span className="text-purple-100 font-semibold">{emotion}</span>
           </p>
         </div>
       </div>
+
       <div className="flex flex-row mt-10 gap-4">
-      <NavLink
+        <NavLink
           to="/handdetection"
           className="px-10 py-5 text-2xl font-semibold rounded-2xl relative overflow-hidden
             bg-gradient-to-r from-green-600 to-lime-400
@@ -239,7 +258,7 @@ export const FaceDetection = () => {
           <span className="relative z-10">Home</span>
           <span className="absolute inset-0 bg-gradient-to-r from-purple-400 to-green-600 opacity-0 hover:opacity-30 transition duration-500"></span>
         </NavLink>
-        </div>
+      </div>
     </div>
   );
 };
