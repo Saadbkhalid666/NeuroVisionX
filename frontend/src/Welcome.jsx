@@ -45,7 +45,7 @@ export const Welcome = () => {
         data-aos-easing="linear"
         data-aos-offset="200"
         data-aos-duration="1500"
-        className="text-4xl md:text-5xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-green-400 to-purple-600 drop-shadow-lg text-center"
+        className="text-2xl md:text-3xl font-extrabold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-green-400 to-purple-600 drop-shadow-lg text-center"
       >
         AI-powered project by Saad.dev
       </p>

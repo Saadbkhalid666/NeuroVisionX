@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import { FaceMesh } from "@mediapipe/face_mesh";
 import { Camera } from "@mediapipe/camera_utils";
 import * as faceapi from "face-api.js";
-import axios from "axios";
 import { NavLink } from "react-router-dom";
 import { DrawingUtils, FaceLandmarker } from "@mediapipe/tasks-vision";
 
@@ -12,16 +11,8 @@ export const FaceDetection = () => {
   const [message, setMessage] = useState("");
   const [gender, setGender] = useState("--");
   const [emotion, setEmotion] = useState("--");
-  const [age, setAge] = useState("--");
   const [loading, setLoading] = useState(true);
   const [modelsLoaded, setModelsLoaded] = useState(false);
-
-  const TRUE_AGE = 16;
-  const ageBuffer = useRef([]);
-  const smoothedAge = useRef(null);
-  const ageBiasRef = useRef(0);
-  const CALIBRATION_ALPHA = 0.25;
-  const MAX_BUF = 21;
 
   let camera = null;
 
@@ -29,6 +20,7 @@ export const FaceDetection = () => {
   const drawFaceMesh = (ctx, landmarks) => {
     if (!landmarks) return;
     const drawingUtils = new DrawingUtils(ctx);
+
     drawingUtils.drawConnectors(
       landmarks,
       FaceLandmarker.FACE_LANDMARKS_LEFT_EYE,
@@ -81,7 +73,7 @@ export const FaceDetection = () => {
     );
   };
 
-  // Load models
+  // Load face-api models
   useEffect(() => {
     const loadModels = async () => {
       try {
@@ -89,7 +81,7 @@ export const FaceDetection = () => {
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
           faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL),
-          faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL),
+          faceapi.nets.ageGenderNet.loadFromUri(MODEL_URL), // gender ke liye ye zaroori hai
         ]);
         setModelsLoaded(true);
         setLoading(false);
@@ -102,7 +94,7 @@ export const FaceDetection = () => {
     loadModels();
   }, []);
 
-  // Mediapipe + face-api
+  // Mediapipe + face-api integration
   useEffect(() => {
     if (!modelsLoaded) return;
 
@@ -146,31 +138,10 @@ export const FaceDetection = () => {
           .withFaceExpressions();
 
         if (detection) {
+          // Gender
           setGender(detection.gender);
 
-          const rawAge = detection.age;
-          if (Number.isFinite(rawAge)) {
-            if (ageBuffer.current.length >= MAX_BUF) ageBuffer.current.shift();
-            ageBuffer.current.push(rawAge);
-
-            const avgAge =
-              ageBuffer.current.reduce((s, v) => s + v, 0) /
-              ageBuffer.current.length;
-            const err = TRUE_AGE - avgAge;
-            ageBiasRef.current =
-              (1 - CALIBRATION_ALPHA) * ageBiasRef.current +
-              CALIBRATION_ALPHA * err;
-
-            const calibrated = Math.max(
-              1,
-              Math.min(100, avgAge + ageBiasRef.current)
-            );
-            const finalAge = Math.round(calibrated);
-
-            smoothedAge.current = finalAge;
-            setAge(finalAge);
-          }
-
+          // Emotion
           const expressions = detection.expressions;
           const maxEmotion = Object.entries(expressions).reduce(
             (max, [emo, val]) =>
@@ -179,13 +150,12 @@ export const FaceDetection = () => {
           );
           setEmotion(maxEmotion.emotion);
 
+          // Draw text on face (without age)
           ctx.fillStyle = "lime";
           ctx.font = "12px Orbitron, sans-serif";
           const p = landmarks[10];
           ctx.fillText(
-            `${smoothedAge.current ?? "--"}y ${detection.gender} ${
-              maxEmotion.emotion
-            }`,
+            `${detection.gender} ${maxEmotion.emotion}`,
             p.x * canvas.width,
             p.y * canvas.height - 10
           );
@@ -193,7 +163,6 @@ export const FaceDetection = () => {
       }
     });
 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     camera = new Camera(videoElement, {
       onFrame: async () => await faceMesh.send({ image: videoElement }),
       width: 640,
@@ -203,18 +172,6 @@ export const FaceDetection = () => {
 
     return () => camera && camera.stop();
   }, [modelsLoaded]);
-
-  // Upload
-  const captureAndUpload = async () => {
-    if (!videoRef.current) return;
-    const canvas = document.createElement("canvas");
-    canvas.width = videoRef.current.videoWidth;
-    canvas.height = videoRef.current.videoHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-
-     
-  };
 
   if (loading) {
     return (
@@ -232,6 +189,7 @@ export const FaceDetection = () => {
   return (
     <div className="relative min-h-screen bg-black flex flex-col items-center justify-center text-white overflow-hidden pb-46 sm:pb-38 px-14">
       <title>NeuroVisionX | Face Detection</title>
+
       {/* Background glow */}
       <div className="absolute -top-40 -left-40 w-72 sm:w-96 h-72 sm:h-96 bg-purple-600 rounded-full blur-3xl opacity-40 animate-pulse"></div>
       <div className="absolute bottom-[-120px] right-[-120px] w-72 sm:w-[400px] h-72 sm:h-[400px] bg-green-500 rounded-full blur-3xl opacity-30 animate-pulse"></div>
@@ -255,19 +213,12 @@ export const FaceDetection = () => {
         />
       </div>
 
-      {/* Buttons + Info */}
+      {/* Info */}
       <div className="mt-6 sm:mt-8 flex flex-col items-center space-y-4 sm:space-y-6 w-full max-w-lg">
-
         <div className="w-full bg-black/50 backdrop-blur-lg border border-purple-700 rounded-xl p-4 sm:p-6 text-purple-300 shadow-inner text-sm sm:text-base">
           <p>
             Gender:{" "}
             <span className="text-purple-100 font-semibold">{gender}</span>
-          </p>
-          <p>
-            Age: <span className="text-purple-100 font-semibold">{age}</span>{" "}
-            <span className="text-yellow-400 text-xs sm:text-sm">
-              (calibrated)
-            </span>
           </p>
           <p>
             Emotion:{" "}
